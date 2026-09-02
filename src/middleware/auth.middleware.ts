@@ -4,7 +4,7 @@ import { verifyToken } from "../utils/token.util.js";
 import { UnauthorizedError } from "../lib/error.js";
 
 export const authenticate = () => async (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies["cookie-name"];
+  const token = req.cookies["accesstoken"];
 
   if (!token) throw new UnauthorizedError("No token provided");
 

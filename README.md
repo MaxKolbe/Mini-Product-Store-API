@@ -223,7 +223,7 @@ Every request is assigned a unique correlation ID (UUID). You can also supply yo
 
 1. **Registration** – The user's password is hashed with **bcryptjs** (10 salt rounds) before being stored in the `users` table.
 
-2. **Login** – The submitted password is compared against the stored hash using `bcrypt.compare`. On success, a **JWT** is generated containing the user's `id` as the `sub` claim, signed with `JWT_SECRET`, and set to expire in **20 minutes**. The token is returned in the response body under `meta.token`.
+2. **Login** – The submitted password is compared against the stored hash using `bcrypt.compare`. On success, a **JWT** is generated containing the user's `id` as the `sub` claim, signed with `JWT_SECRET`, and set to expire in **20 minutes**. The token is returned in the response body under `meta.token` and set in the broswer's cookie-jar.
 
 3. **Protected routes** *(scaffolded, not yet wired to active endpoints)* – An `authenticate` middleware reads a JWT from the `cookie-name` cookie, verifies it with `jsonwebtoken`, and attaches `req.user = { id }` to the request. It throws `UnauthorizedError` for missing, expired, or invalid tokens.
 
