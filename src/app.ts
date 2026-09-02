@@ -5,6 +5,7 @@ import requestLogger from "./middleware/requestLogger.middleware.js";
 import errorHandler from "./middleware/errorHandler.middleware.js";
 // import { connectRedis } from "./configs/cache.config.js";
 import authRouter from "./routes/auth.routes.js"
+import "./events/auth.events.js"
 
 const app = express();
 

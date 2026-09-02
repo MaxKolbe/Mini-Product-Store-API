@@ -1,9 +1,11 @@
 import { hashPassword, verifyPassword } from "../utils/password.util.js";
 import { ConflictError, ValidationError } from "../lib/error.js";
+import { generateToken } from "../utils/token.util.js";
+import { appEvents } from "../lib/events.js";
 import { users } from "../db/models/users.js";
 import { eq } from "drizzle-orm";
 import db from "../db/db.js";
-import { generateToken } from "../utils/token.util.js";
+import { AUTH_EVENTS } from "../events/auth.events.js";
 
 export const register = async (
   options: {
@@ -37,12 +39,21 @@ export const register = async (
     throw new Error("User could not be created");
   }
 
-  // add event to send user email on registration
+  // event to send user email on registration
+  appEvents.emit(AUTH_EVENTS.AUTH_SIGNUP, {
+    email: newUser.email,
+    userId: newUser.id,
+    correlationId,
+  });
 
   return {
     code: 200,
     message: "user created successfully",
-    data: newUser,
+    data: {
+      id: newUser.id,
+      email: newUser.email,
+      createdAt: newUser.createdAt,
+    },
     meta: {
       correlationId,
     },
@@ -60,18 +71,33 @@ export const login = async (
   const [user] = await db.select().from(users).where(eq(users.email, email));
 
   if (!user) {
-    // emitter to log failed login attempt
+    appEvents.emit(AUTH_EVENTS.AUTH_LOGIN_FAIL, {
+      email,
+      reason: "user not found",
+      deviceInfo: undefined,
+      correlationId,
+    });
 
     throw new ValidationError("Invalid credentials");
   }
 
   const valid = await verifyPassword(password, user.password);
   if (!valid) {
-    // emitter to log failed login attempt
+    appEvents.emit(AUTH_EVENTS.AUTH_LOGIN_FAIL, {
+      email,
+      reason: "invald password",
+      deviceInfo: undefined,
+      correlationId,
+    });
+
     throw new ValidationError("Invalid credentials");
   }
 
-  // emitter to log login attempt
+  appEvents.emit(AUTH_EVENTS.AUTH_LOGIN, {
+    email,
+    deviceInfo: undefined,
+    correlationId,
+  });
 
   const token = generateToken({
     id: user.id,

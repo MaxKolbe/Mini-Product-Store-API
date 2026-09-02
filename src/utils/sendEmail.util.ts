@@ -8,7 +8,7 @@ export const sendEmail = async (
   to: string,
   subject: string,
   content: string,
-  name: string = "Example",
+  name: string = "Mini Product Store",
 ) => {
   let html = await ejs.renderFile(
     process.cwd() + "/src/views/template.ejs",
@@ -29,16 +29,16 @@ export const sendEmail = async (
     });
 
     return result;
-  } catch (err: any) {
-    if (err.statusCode === 401) {
+  } catch (error: any) {
+    if (error.statusCode === 401) {
       logger.error("Invalid API key:", { recipient: to });
-    } else if (err.statusCode === 429) {
-      const retryAfter = err.rawResponse.headers["retry-after"];
+    } else if (error.statusCode === 429) {
+      const retryAfter = error.rawResponse.headers["retry-after"];
       logger.error(`Rate limited. Retry after ${retryAfter}s`, { recipient: to });
-    } else if (err instanceof BrevoError) {
-      logger.error(`Brevo API error ${err.statusCode}`, {
+    } else if (error instanceof BrevoError) {
+      logger.error(`Brevo API error ${error.statusCode}`, {
         recipient: to,
-        errorMessage: err.message,
+        errorMessage: error.message,
       });
     }
   }

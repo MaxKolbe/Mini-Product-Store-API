@@ -53,6 +53,8 @@ docs {
   
   Returned when the user is registered successfully. The `data` field contains the full user record as inserted into the database.
   
+  > **Side Effect:** A welcome email is sent asynchronously to the registered email address. This does not affect the API response — if the email fails to send, the user is still created successfully and the failure is logged server-side.
+  
   ```json
   {
     "success": true,
@@ -60,10 +62,7 @@ docs {
     "data": {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "email": "user@example.com",
-      "password": "$2b$10$hashedpasswordstring...",
-      "createdAt": "2026-09-02T15:00:00.000Z",
-      "updatedAt": null,
-      "deletedAt": null
+      "createdAt": "2026-09-02T15:00:00.000Z"
     },
     "meta": {
       "correlationId": "req-abc123-xyz"
@@ -80,10 +79,7 @@ docs {
   | `data`               | `object`          | The newly created user record.                   |
   | `data.id`            | `string` (UUID)   | Auto-generated UUID v4 primary key.              |
   | `data.email`         | `string`          | The user's email (lowercased, trimmed).          |
-  | `data.password`      | `string`          | The bcrypt-hashed password.                      |
-  | `data.createdAt`     | `string` (ISO 8601) | Timestamp of when the record was created.     |
-  | `data.updatedAt`     | `string \| null`  | Timestamp of last update, `null` on creation.    |
-  | `data.deletedAt`     | `string \| null`  | Soft-delete timestamp, `null` when active.       |
+  | `data.createdAt`     | `string` (ISO 8601) | Timestamp of when the record was created.      |
   | `meta`               | `object`          | Request metadata.                                |
   | `meta.correlationId` | `string`          | Correlation ID attached to the request lifecycle.|
   
