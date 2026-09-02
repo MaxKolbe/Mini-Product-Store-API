@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-export const exampleAuthScema = z.object({
+export const userSchema = z.object({
   body: z.object({
     email: z.email("Must be a valid email").transform((v) => v.toLowerCase().trim()),
     password: z

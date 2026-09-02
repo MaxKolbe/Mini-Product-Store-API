@@ -3,7 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import requestLogger from "./middleware/requestLogger.middleware.js";
 import errorHandler from "./middleware/errorHandler.middleware.js";
-import { connectRedis } from "./configs/cache.config.js";
+// import { connectRedis } from "./configs/cache.config.js";
+import authRouter from "./routes/auth.routes.js"
 
 const app = express();
 
@@ -36,7 +37,7 @@ app.use(requestLogger);
 // })();
 
 //ROUTES
-/* app.use("/api/v1", ); */
+app.use("/api/auth", authRouter); 
 
 // HANDLER FOR UNKNOWN ROUTES
 app.use((req, res) => {
