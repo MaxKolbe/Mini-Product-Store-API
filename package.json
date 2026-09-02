@@ -1,0 +1,56 @@
+{
+  "name": "mini-product-store-api",
+  "version": "1.0.0",
+  "description": "A small end-to-end backend app where users sign up, browse products, pay for one with Stripe, and get emails along the way.",
+  "main": "index.js",
+  "scripts": {
+   	"build": "npm install --include=dev && npx tsc",
+		"start": "node dist/index.js",
+		"dev": "tsx watch --env-file=.env src/index.ts",
+		"watch": "tsc -w",
+		"db:generate": "drizzle-kit generate",
+		"db:studio": "drizzle-kit studio",
+		"db:migrate": "drizzle-kit migrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaxKolbe/Mini-Product-Store-API.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/MaxKolbe/Mini-Product-Store-API/issues"
+  },
+  "homepage": "https://github.com/MaxKolbe/Mini-Product-Store-API#readme",
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.4.1",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@getbrevo/brevo": "^6.0.3",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0",
+    "redis": "^6.2.1",
+    "tsx": "^4.23.13",
+    "winston": "^3.19.0",
+    "zod": "^4.5.4"
+  }
+}
