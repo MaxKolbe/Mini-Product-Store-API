@@ -22,7 +22,7 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
 
   // bug
   logger.error(`Unhandled error`, { error: err });
-  console.log(`\n Unhandled error`, err ) // Remove on prod
+
   res.status(500).json({
     status: false,
     error: {

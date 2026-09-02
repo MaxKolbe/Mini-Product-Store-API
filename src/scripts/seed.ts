@@ -4,7 +4,7 @@ import { users } from "../db/models/users.js";
 import { hashPassword } from "../utils/password.util.js";
 
 // CLEAR TABLES
-const clearTables = async () => {
+export const clearTables = async () => {
   try {
     logger.info("Clearing tables...");
     await db.delete(users);
@@ -17,7 +17,7 @@ const clearTables = async () => {
 };
 
 // INSTALL EXTENSIONS
-const installExtensions = async () => {
+export const installExtensions = async () => {
   try {
     logger.info("Installing Extensions");
     await db.execute(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
