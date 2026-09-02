@@ -1,0 +1,173 @@
+meta {
+  name: Login User
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "user@example.com",
+    "password": "SecurePass1"
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3000
+}
+
+docs {
+  # POST `/api/auth/login`
+  
+  Authenticate an existing user and receive a JWT access token.
+  
+  ---
+  
+  ## Request
+  
+  **Method:** `POST`
+  **URL:** `/api/auth/login`
+  **Content-Type:** `application/json`
+  
+  ### Request Body
+  
+  | Field      | Type     | Required | Constraints                                                                                      |
+  |------------|----------|----------|--------------------------------------------------------------------------------------------------|
+  | `email`    | `string` | Yes      | Must be a valid email address. Automatically lowercased and trimmed.                             |
+  | `password` | `string` | Yes      | Min 8 characters, max 128 characters. Must contain at least one uppercase letter and one number. |
+  
+  ---
+  
+  ## Responses
+  
+  ### `201 Created` — Login Successful
+  
+  Returned when the user's credentials are valid. The response includes the user's basic profile and a signed JWT token in `meta`.
+  
+  ```json
+  {
+    "success": true,
+    "message": "user logged in successfully",
+    "data": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "email": "user@example.com"
+    },
+    "meta": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "correlationId": "req-abc123-xyz"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field                | Type            | Description                                             |
+  |----------------------|-----------------|---------------------------------------------------------|
+  | `success`            | `boolean`       | Always `true` for successful responses.                 |
+  | `message`            | `string`        | Human-readable status message.                          |
+  | `data`               | `object`        | The authenticated user's profile (password excluded).   |
+  | `data.id`            | `string` (UUID) | The user's UUID v4 primary key.                         |
+  | `data.email`         | `string`        | The user's email address.                               |
+  | `meta`               | `object`        | Request metadata and authentication token.              |
+  | `meta.token`         | `string` (JWT)  | Signed JWT access token. Expires in 20 minutes. Payload contains `sub` (user id). |
+  | `meta.correlationId` | `string`        | Correlation ID attached to the request lifecycle.       |
+  
+  ---
+  
+  ### `400 Bad Request` — Validation Error
+  
+  Returned when the request body fails Zod schema validation (e.g. missing fields, invalid email, weak password).
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Request validation failed",
+      "details": [
+        {
+          "field": "email",
+          "message": "Must be a valid email"
+        },
+        {
+          "field": "password",
+          "message": "Password must be at least 8 characters"
+        }
+      ]
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field                    | Type       | Description                                             |
+  |--------------------------|------------|---------------------------------------------------------|
+  | `status`                 | `boolean`  | Always `false` for error responses.                     |
+  | `error`                  | `object`   | Error detail container.                                 |
+  | `error.code`             | `string`   | Error code: `"VALIDATION_ERROR"`.                       |
+  | `error.message`          | `string`   | `"Request validation failed"`.                          |
+  | `error.details`          | `array`    | List of individual field validation errors.             |
+  | `error.details[].field`  | `string`   | The name of the field that failed validation.           |
+  | `error.details[].message`| `string`   | Human-readable description of the validation failure.   |
+  
+  ---
+  
+  ### `400 Bad Request` — Invalid Credentials
+  
+  Returned when the email does not match any existing user, or the password is incorrect. The same generic message is used for both cases to prevent user enumeration.
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Invalid credentials"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field           | Type      | Description                                    |
+  |-----------------|-----------|------------------------------------------------|
+  | `status`        | `boolean` | Always `false` for error responses.            |
+  | `error`         | `object`  | Error detail container.                        |
+  | `error.code`    | `string`  | Error code: `"VALIDATION_ERROR"`.              |
+  | `error.message` | `string`  | `"Invalid credentials"`.                       |
+  
+  ---
+  
+  ### `500 Internal Server Error` — Unexpected Error
+  
+  Returned when an unhandled or non-operational error occurs (e.g. database connection failure).
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected error occured"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field           | Type      | Description                                    |
+  |-----------------|-----------|------------------------------------------------|
+  | `status`        | `boolean` | Always `false` for error responses.            |
+  | `error`         | `object`  | Error detail container.                        |
+  | `error.code`    | `string`  | Error code: `"INTERNAL_ERROR"`.                |
+  | `error.message` | `string`  | `"An unexpected error occured"`.               |
+  
+  ---
+}

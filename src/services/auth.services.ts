@@ -1,15 +1,18 @@
-import { hashPassword } from "../utils/password.util.js";
-import { ConflictError } from "../lib/error.js";
-import { users } from "../db/models/users.js"
+import { hashPassword, verifyPassword } from "../utils/password.util.js";
+import { ConflictError, ValidationError } from "../lib/error.js";
+import { users } from "../db/models/users.js";
 import { eq } from "drizzle-orm";
 import db from "../db/db.js";
+import { generateToken } from "../utils/token.util.js";
 
-export const register = async (options: {
+export const register = async (
+  options: {
     email: string;
     password: string;
   },
-  correlationId: string,) => {
- const { email, password } = options;
+  correlationId: string,
+) => {
+  const { email, password } = options;
 
   const [ogUser] = await db
     .select({ email: users.email })
@@ -41,7 +44,49 @@ export const register = async (options: {
     message: "user created successfully",
     data: newUser,
     meta: {
-        correlationId
-    }
+      correlationId,
+    },
   };
-}
+};
+
+export const login = async (
+  options: {
+    email: string;
+    password: string;
+  },
+  correlationId: string,
+) => {
+  const { email, password } = options;
+  const [user] = await db.select().from(users).where(eq(users.email, email));
+
+  if (!user) {
+    // emitter to log failed login attempt
+
+    throw new ValidationError("Invalid credentials");
+  }
+
+  const valid = await verifyPassword(password, user.password);
+  if (!valid) {
+    // emitter to log failed login attempt
+    throw new ValidationError("Invalid credentials");
+  }
+
+  // emitter to log login attempt
+
+  const token = generateToken({
+    id: user.id,
+  });
+
+  return {
+    code: 201,
+    message: "user logged in successfully",
+    data: {
+      id: user.id,
+      email: user.email,
+    },
+    meta: {
+      token,
+      correlationId,
+    },
+  };
+};
