@@ -4,7 +4,8 @@ import cookieParser from "cookie-parser";
 import requestLogger from "./middleware/requestLogger.middleware.js";
 import errorHandler from "./middleware/errorHandler.middleware.js";
 // import { connectRedis } from "./configs/cache.config.js";
-import authRouter from "./routes/auth.routes.js"
+import authRouter from "./routes/auth.routes.js";
+import productsRouter from "./routes/products.routes.js";
 import "./events/auth.events.js"
 
 const app = express();
@@ -39,6 +40,7 @@ app.use(requestLogger);
 
 //ROUTES
 app.use("/api/auth", authRouter); 
+app.use("/api/products", productsRouter); 
 
 // HANDLER FOR UNKNOWN ROUTES
 app.use((req, res) => {

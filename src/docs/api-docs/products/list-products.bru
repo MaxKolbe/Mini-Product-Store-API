@@ -1,0 +1,191 @@
+meta {
+  name: List Products
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/products?page=1&limit=25&orderBy=desc
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  limit: 25
+  orderBy: desc
+  ~search: keyboard
+}
+
+
+vars:pre-request {
+  baseUrl: http://localhost:3000
+}
+
+docs {
+  # GET `/api/products`
+
+  Retrieve a paginated list of products with optional search and sorting capabilities.
+
+  ---
+
+  ## Request
+
+  **Method:** `GET`  
+  **URL:** `/api/products`  
+  **Authentication:** NONE
+
+  ### Query Parameters
+
+  | Parameter | Type | Required | Default | Description |
+  |-----------|------|----------|---------|-------------|
+  | `page` | `number` | No | `1` | Page number for pagination (minimum: 1). |
+  | `limit` | `number` | No | `25` | Number of items per page (minimum: 1, maximum: 100). |
+  | `orderBy` | `string` (`"asc"` \| `"desc"`) | No | `"desc"` | Sort direction by `createdAt` date. |
+  | `search` | `string` | No | *undefined* | Case-insensitive search query matched against product `name` and `description`. |
+
+  ---
+
+  ## Responses
+
+  ### `200 OK` — Products Retrieved Successfully
+
+  Returned when products are successfully fetched according to pagination and search parameters.
+
+  ```json
+  {
+    "success": true,
+    "message": "products retrieved successfully",
+    "data": [
+      {
+        "id": "c7a8b9d0-1234-5678-9abc-def012345678",
+        "name": "Wireless Mechanical Keyboard",
+        "description": "Compact RGB wireless mechanical keyboard with tactile switches.",
+        "price": 8999,
+        "createdAt": "2026-09-03T12:00:00.000Z",
+        "updatedAt": null,
+        "deletedAt": null
+      }
+    ],
+    "meta": {
+      "correlationId": "req-abc123-xyz",
+      "pagination": {
+        "page": 1,
+        "limit": 25,
+        "totalRecords": 4,
+        "totalPages": 1,
+        "hasNextPage": false,
+        "hasPrevPage": false
+      }
+    }
+  }
+  ```
+
+  #### Response Data Shape & Data Types
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `success` | `boolean` | Always `true` for successful responses. |
+  | `message` | `string` | Status message (`"products retrieved successfully"`). |
+  | `data` | `array` | List of product records matching criteria. |
+  | `data[].id` | `string` (UUID v4) | Unique primary key identifier for the product. |
+  | `data[].name` | `string` | Product title/name. |
+  | `data[].description` | `string` | Detailed description of the product. |
+  | `data[].price` | `number` (integer) | Price of the product in cents (e.g., `8999` represents $89.99). |
+  | `data[].createdAt` | `string` (ISO 8601 Date) | Timestamp when the product record was created. |
+  | `data[].updatedAt` | `string` (ISO 8601 Date) \| `null` | Timestamp when the product record was last updated, or `null`. |
+  | `data[].deletedAt` | `string` (ISO 8601 Date) \| `null` | Timestamp when the product was soft-deleted, or `null`. |
+  | `meta` | `object` | Metadata container. |
+  | `meta.correlationId` | `string` | Unique identifier assigned to track the request lifecycle. |
+  | `meta.pagination` | `object` | Pagination details. |
+  | `meta.pagination.page` | `number` (integer) | Current page number. |
+  | `meta.pagination.limit` | `number` (integer) | Max items per page. |
+  | `meta.pagination.totalRecords` | `number` (integer) | Total matching product count. |
+  | `meta.pagination.totalPages` | `number` (integer) | Calculated total pages available (`Math.ceil(total / limit)`). |
+  | `meta.pagination.hasNextPage` | `boolean` | Indicates if subsequent pages exist (`page < totalPages`). |
+  | `meta.pagination.hasPrevPage` | `boolean` | Indicates if previous pages exist (`page > 1`). |
+
+  ---
+
+  ### `401 Unauthorized` — Authentication Missing or Invalid
+
+  Returned when the `Authorization` header is missing or contains an invalid/expired JWT token.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Authentication token required"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details object. |
+  | `error.code` | `string` | Error code (`"UNAUTHORIZED"`). |
+  | `error.message` | `string` | Description of authentication error. |
+
+  ---
+
+  ### `400 Bad Request` — Validation Error
+
+  Returned when query parameters fail Zod schema validation (e.g. `page` < 1, `limit` > 100, `orderBy` invalid value).
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Request validation failed",
+      "details": [
+        {
+          "field": "query.limit",
+          "message": "Number must be less than or equal to 100"
+        }
+      ]
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details object. |
+  | `error.code` | `string` | `"VALIDATION_ERROR"`. |
+  | `error.message` | `string` | `"Request validation failed"`. |
+  | `error.details` | `array` | List of field validation failures. |
+  | `error.details[].field` | `string` | Target field path that failed validation. |
+  | `error.details[].message` | `string` | Error message describing the rule violation. |
+
+  ---
+
+  ### `500 Internal Server Error` — Server Failure
+
+  Returned when an unhandled server or database error occurs.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected error occured"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error container. |
+  | `error.code` | `string` | `"INTERNAL_ERROR"`. |
+  | `error.message` | `string` | Error description. |
+}
