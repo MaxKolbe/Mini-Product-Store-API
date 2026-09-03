@@ -1,8 +1,6 @@
 # Mini-Product-Store-API
 A small end-to-end backend app where users sign up, browse products, pay for one with Stripe, and get emails along the way.
 
-> **Note:** Products, Stripe payments, and browsing features are not yet implemented. The current codebase provides **user registration and login** with welcome emails via Brevo.
-
 ## Tech Stack
 
 | Layer | Technology |
@@ -14,6 +12,7 @@ A small end-to-end backend app where users sign up, browse products, pay for one
 | ORM | Drizzle ORM + Drizzle Kit |
 | Validation | Zod 4 |
 | Auth | JSON Web Tokens (`jsonwebtoken`) + bcryptjs |
+| Payments | Stripe via `stripe` SDK |
 | Email | Brevo (formerly Sendinblue) via `@getbrevo/brevo` |
 | Templating | EJS (for email HTML) |
 | Logging | Winston |
@@ -27,6 +26,7 @@ A small end-to-end backend app where users sign up, browse products, pay for one
 - **Redis** *(optional)* – Required only if you enable the Redis caching layer (currently commented out)
 - **npm**
 - A **Brevo account** with an API key for transactional emails
+- A **Stripe account** with a secret key for payment processing
 
 #   Installation
 
@@ -65,14 +65,16 @@ cp .env.example .env
 | `JWT_SECRET` | Secret key used to sign and verify JWTs | *any strong random string* |
 | `BREVO_API_KEY` | API key from your Brevo account | `xkeysib-...` |
 | `BREVO_EMAIL` | Sender email address registered in Brevo | `noreply@example.com` |
+| `STRIPE_SECRET_KEY` | Secret key from your Stripe dashboard | `sk_test_...` |
+| `API_BASE_URL` | Base URL of the running API (used for Stripe success/cancel redirect URLs) | `http://localhost:3000/` |
 
 #   Database setup/migrations
 
 The project uses **Drizzle ORM** with PostgreSQL. The database schema is defined in `src/db/models/` and migrations are output to `drizzle/`.
 
 ```bash
-# 1. Install the uuid-ossp extension and seed a test user
-#    (clears tables, installs extensions, inserts user@example.com / 1234)
+# 1. Install the uuid-ossp extension and seed test data
+#    (clears tables, installs extensions, inserts user@example.com / SecurePass1 and 4 products)
 npm run db:seed
 
 # 2. Generate migrations from the Drizzle schema
@@ -99,6 +101,20 @@ npm run db:studio
 | `deleted_at` | `timestamp` | Nullable (soft delete) |
 
 **Indexes:** `user_email_idx` on `email`, `user_createdat_idx` on `created_at`.
+
+**`products`** table:
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | Primary key, auto-generated (`uuid_generate_v4()`) |
+| `name` | `text` | Not null |
+| `description` | `text` | Not null |
+| `price` | `integer` | Not null (stored in minor currency units, e.g. kobo) |
+| `updated_at` | `timestamp` | Nullable |
+| `created_at` | `timestamp` | Not null, defaults to `now()` |
+| `deleted_at` | `timestamp` | Nullable (soft delete) |
+
+**Indexes:** `products_name_idx` on `name`, `products_desc_idx` on `description`, `products_price_idx` on `price`, `products_createdat_idx` on `created_at`.
 
 #   Running locally
 
@@ -198,6 +214,122 @@ Log in with existing credentials. Returns a JWT on success.
 
 ---
 
+### Products
+
+#### `GET /api/products`
+
+Retrieve a paginated list of products. **No authentication required.**
+
+**Query parameters:**
+
+| Parameter | Type | Default | Constraints |
+|---|---|---|---|
+| `page` | `number` | `1` | Minimum: 1 |
+| `limit` | `number` | `25` | Min: 1, Max: 100 |
+| `orderBy` | `string` | `"desc"` | `"asc"` or `"desc"` (sorts by `created_at`) |
+| `search` | `string` | — | Optional. Case-insensitive match on product `name` or `description` |
+
+**Success response (`200`):**
+```json
+{
+  "success": true,
+  "message": "products retrieved successfully",
+  "data": [
+    {
+      "id": "305fe4da-...",
+      "name": "Wireless Mechanical Keyboard",
+      "description": "Compact RGB wireless mechanical keyboard with tactile switches.",
+      "price": 89999,
+      "createdAt": "2026-09-03T12:00:00.000Z",
+      "updatedAt": null,
+      "deletedAt": null
+    }
+  ],
+  "meta": {
+    "correlationId": "uuid-...",
+    "pagination": {
+      "page": 1,
+      "limit": 25,
+      "totalRecords": 4,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false
+    }
+  }
+}
+```
+
+**Error responses:**
+
+| Status | Code | Condition |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | Invalid query params (e.g., `page` < 1, `limit` > 100) |
+
+---
+
+### Checkout
+
+#### `POST /api/checkout`
+
+Create a Stripe Checkout Session for one or more products. **Requires authentication** (JWT in `accesstoken` cookie).
+
+**Request body:**
+```json
+{
+  "products": [
+    {
+      "productId": "305fe4da-8bc4-449e-b566-ebbb5a065a4d",
+      "quantity": 2
+    }
+  ]
+}
+```
+
+**Validation rules:**
+- `products` – array with at least 1 item
+- `products[].productId` – must be a valid UUID
+- `products[].quantity` – must be a positive integer
+
+**Success response (`200`):**
+```json
+{
+  "success": true,
+  "message": "checkout session created successfully",
+  "data": {
+    "url": "https://checkout.stripe.com/c/pay/cs_test_..."
+  },
+  "meta": {
+    "correlationId": "uuid-..."
+  }
+}
+```
+
+The `data.url` is a Stripe-hosted checkout page. Redirect the user to this URL to complete payment.
+
+**Error responses:**
+
+| Status | Code | Condition |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | Empty products array, invalid UUID, or non-positive quantity |
+| `401` | `UNAUTHORIZED` | Missing, expired, or invalid JWT token |
+
+---
+
+#### `GET /api/checkout`
+
+Placeholder success callback endpoint. Stripe redirects here after a successful payment.
+
+**Success response (`200`):**
+```json
+{
+  "success": true,
+  "message": "payment made successfully",
+  "data": null
+}
+```
+
+---
+
 #### Unknown routes
 
 Any request to an undefined route returns:
@@ -223,9 +355,9 @@ Every request is assigned a unique correlation ID (UUID). You can also supply yo
 
 1. **Registration** – The user's password is hashed with **bcryptjs** (10 salt rounds) before being stored in the `users` table.
 
-2. **Login** – The submitted password is compared against the stored hash using `bcrypt.compare`. On success, a **JWT** is generated containing the user's `id` as the `sub` claim, signed with `JWT_SECRET`, and set to expire in **20 minutes**. The token is returned in the response body under `meta.token` and set in the broswer's cookie-jar.
+2. **Login** – The submitted password is compared against the stored hash using `bcrypt.compare`. On success, a **JWT** is generated containing the user's `id` as the `sub` claim and `email`, signed with `JWT_SECRET`, and set to expire in **20 minutes**. The token is returned in the response body under `meta.token` and set in the browser's cookie-jar as `accesstoken`.
 
-3. **Protected routes** *(scaffolded, not yet wired to active endpoints)* – An `authenticate` middleware reads a JWT from the `cookie-name` cookie, verifies it with `jsonwebtoken`, and attaches `req.user = { id }` to the request. It throws `UnauthorizedError` for missing, expired, or invalid tokens.
+3. **Protected routes** – The `authenticate` middleware reads a JWT from the `accesstoken` cookie, verifies it with `jsonwebtoken`, and attaches `req.user = { id, email }` to the request. It throws `UnauthorizedError` for missing, expired, or invalid tokens. Currently used by the `POST /api/checkout` route.
 
 4. **Error classes** – The app defines structured error classes (`ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`) that extend a base `AppError`. The global error handler middleware catches these and returns consistent JSON error responses with `status`, `error.code`, and `error.message`.
 
@@ -268,7 +400,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ### Using Bruno
 
-The project includes Bruno API collection files in `src/docs/api-docs/` with pre-configured requests for both the `register` and `login` endpoints. Open the collection folder in [Bruno](https://www.usebruno.com/) to send requests interactively.
+The project includes Bruno API collection files in `src/docs/api-docs/` with pre-configured requests for the `register`, `login`, `list products`, and `checkout` endpoints. Open the collection folder in [Bruno](https://www.usebruno.com/) to send requests interactively.
 
 ### Integration tests
 
