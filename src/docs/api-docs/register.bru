@@ -1,0 +1,175 @@
+meta {
+  name: Register User
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/register
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "user@example.com",
+    "password": "SecurePass1"
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3000
+}
+
+docs {
+  # POST `/api/auth/register`
+  
+  Register a new user account.
+  
+  ---
+  
+  ## Request
+  
+  **Method:** `POST`
+  **URL:** `/api/auth/register`
+  **Content-Type:** `application/json`
+  
+  ### Request Body
+  
+  | Field      | Type     | Required | Constraints                                                                                      |
+  |------------|----------|----------|--------------------------------------------------------------------------------------------------|
+  | `email`    | `string` | Yes      | Must be a valid email address. Automatically lowercased and trimmed.                             |
+  | `password` | `string` | Yes      | Min 8 characters, max 128 characters. Must contain at least one uppercase letter and one number. |
+  
+  ---
+  
+  ## Responses
+  
+  ### `200 OK` — User Created Successfully
+  
+  Returned when the user is registered successfully. The `data` field contains the full user record as inserted into the database.
+  
+  > **Side Effect:** A welcome email is sent asynchronously to the registered email address. This does not affect the API response — if the email fails to send, the user is still created successfully and the failure is logged server-side.
+  
+  ```json
+  {
+    "success": true,
+    "message": "user created successfully",
+    "data": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "email": "user@example.com",
+      "createdAt": "2026-09-02T15:00:00.000Z"
+    },
+    "meta": {
+      "correlationId": "req-abc123-xyz"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field                | Type              | Description                                      |
+  |----------------------|-------------------|--------------------------------------------------|
+  | `success`            | `boolean`         | Always `true` for successful responses.          |
+  | `message`            | `string`          | Human-readable status message.                   |
+  | `data`               | `object`          | The newly created user record.                   |
+  | `data.id`            | `string` (UUID)   | Auto-generated UUID v4 primary key.              |
+  | `data.email`         | `string`          | The user's email (lowercased, trimmed).          |
+  | `data.createdAt`     | `string` (ISO 8601) | Timestamp of when the record was created.      |
+  | `meta`               | `object`          | Request metadata.                                |
+  | `meta.correlationId` | `string`          | Correlation ID attached to the request lifecycle.|
+  
+  ---
+  
+  ### `400 Bad Request` — Validation Error
+  
+  Returned when the request body fails Zod schema validation (e.g. missing fields, invalid email, weak password).
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Request validation failed",
+      "details": [
+        {
+          "field": "email",
+          "message": "Must be a valid email"
+        },
+        {
+          "field": "password",
+          "message": "Password must be at least 8 characters"
+        }
+      ]
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field                    | Type       | Description                                             |
+  |--------------------------|------------|---------------------------------------------------------|
+  | `status`                 | `boolean`  | Always `false` for error responses.                     |
+  | `error`                  | `object`   | Error detail container.                                 |
+  | `error.code`             | `string`   | Error code: `"VALIDATION_ERROR"`.                       |
+  | `error.message`          | `string`   | `"Request validation failed"`.                          |
+  | `error.details`          | `array`    | List of individual field validation errors.             |
+  | `error.details[].field`  | `string`   | The name of the field that failed validation.           |
+  | `error.details[].message`| `string`   | Human-readable description of the validation failure.   |
+  
+  ---
+  
+  ### `409 Conflict` — Email Already Exists
+  
+  Returned when a user with the provided email address already exists in the database.
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "CONFLICT",
+      "message": "Email already exists"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field           | Type      | Description                                    |
+  |-----------------|-----------|------------------------------------------------|
+  | `status`        | `boolean` | Always `false` for error responses.            |
+  | `error`         | `object`  | Error detail container.                        |
+  | `error.code`    | `string`  | Error code: `"CONFLICT"`.                      |
+  | `error.message` | `string`  | `"Email already exists"`.                      |
+  
+  ---
+  
+  ### `500 Internal Server Error` — Unexpected Error
+  
+  Returned when an unhandled or non-operational error occurs (e.g. database connection failure, user insertion failure).
+  
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected error occured"
+    }
+  }
+  ```
+  
+  #### Response Shape
+  
+  | Field           | Type      | Description                                    |
+  |-----------------|-----------|------------------------------------------------|
+  | `status`        | `boolean` | Always `false` for error responses.            |
+  | `error`         | `object`  | Error detail container.                        |
+  | `error.code`    | `string`  | Error code: `"INTERNAL_ERROR"`.                |
+  | `error.message` | `string`  | `"An unexpected error occured"`.               |
+  
+  ---
+}
