@@ -1,12 +1,14 @@
 import db from "../db/db.js"
 import logger from "../configs/logger.config.js";
 import { users } from "../db/models/users.js";
+import { products } from "../db/models/products.js"; 
 import { hashPassword } from "../utils/password.util.js";
 
 // CLEAR TABLES
 export const clearTables = async () => {
   try {
     logger.info("Clearing tables...");
+    await db.delete(products);
     await db.delete(users);
     logger.info("Tables cleared :)");
   } catch (error: any) {
@@ -29,7 +31,7 @@ export const installExtensions = async () => {
   }
 };
 
-// CLEAR TABLES
+// SEED USERS TABLE
 const seedUser = async () => {
   try {
     const newPassword = await hashPassword("1234")
@@ -45,7 +47,39 @@ const seedUser = async () => {
   }
 };
 
+const seedProducts = async () => {
+  try {
+    await db.insert(products).values([
+      {
+        name: "Wireless Mechanical Keyboard",
+        description: "Compact RGB wireless mechanical keyboard with tactile switches.",
+        price: 8999,
+      },
+      {
+        name: "Ergonomic Gaming Mouse",
+        description: "Precision wireless mouse with customizable buttons and ergonomic grip.",
+        price: 4999,
+      },
+      {
+        name: "UltraWide Monitor 34\"",
+        description: "34-inch curved UltraWide QHD monitor with 144Hz refresh rate.",
+        price: 45000,
+      },
+      {
+        name: "Noise-Canceling Headphones",
+        description: "Over-ear wireless headphones with active noise cancellation and 30-hour battery life.",
+        price: 19999,
+      },
+    ]);
+    logger.info("Products table seeded :)");
+  } catch (error: any) {
+    logger.error("Could not seed products table", {
+      message: error.message,
+    });
+  }
+};
 
 await clearTables();
 await installExtensions();
-await seedUser()
+await seedUser();
+await seedProducts();
