@@ -4,10 +4,13 @@ export const productsSchema = z.object({
   body: z.object({
     name: z.string().trim().min(3),
     description: z.string().trim().min(3),
-    price: z.preprocess((v) => {
-      const parsed = Number(v);
-      return Number.isFinite(parsed) ? Math.round(parsed * 100) : v;
-    }, z.number().int().positive()),
+    price: z.preprocess(
+      (v) => {
+        const parsed = Number(v);
+        return Number.isFinite(parsed) ? Math.round(parsed * 100) : v;
+      },
+      z.number().int().positive().gt(70000, "Item's price must be greater than N700"),
+    ),
   }),
 });
 

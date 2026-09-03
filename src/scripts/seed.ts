@@ -1,7 +1,7 @@
-import db from "../db/db.js"
+import db from "../db/db.js";
 import logger from "../configs/logger.config.js";
 import { users } from "../db/models/users.js";
-import { products } from "../db/models/products.js"; 
+import { products } from "../db/models/products.js";
 import { hashPassword } from "../utils/password.util.js";
 
 // CLEAR TABLES
@@ -34,11 +34,11 @@ export const installExtensions = async () => {
 // SEED USERS TABLE
 const seedUser = async () => {
   try {
-    const newPassword = await hashPassword("SecurePass1")
+    const newPassword = await hashPassword("SecurePass1");
     await db.insert(users).values({
-        email: "user@example.com",
-        password: newPassword
-    })
+      email: "user@example.com",
+      password: newPassword,
+    });
     logger.info("User seeded :)");
   } catch (error: any) {
     logger.error("Could not seed user table", {
@@ -51,23 +51,28 @@ const seedProducts = async () => {
   try {
     await db.insert(products).values([
       {
+        id: "305fe4da-8bc4-449e-b566-ebbb5a065a4d",
         name: "Wireless Mechanical Keyboard",
         description: "Compact RGB wireless mechanical keyboard with tactile switches.",
-        price: 8999,
+        price: 89999,
       },
       {
+        id: "fdb214fc-352e-476c-bb11-6b8a23dae619",
         name: "Ergonomic Gaming Mouse",
         description: "Precision wireless mouse with customizable buttons and ergonomic grip.",
-        price: 4999,
+        price: 49999,
       },
       {
-        name: "UltraWide Monitor 34\"",
+        id: "c3b415b2-6f3b-4415-99a2-536f7fe0017a",
+        name: 'UltraWide Monitor 34"',
         description: "34-inch curved UltraWide QHD monitor with 144Hz refresh rate.",
         price: 45000,
       },
       {
+        id: "52fd7ac1-9019-489d-a0ba-b0ee300b9e60",
         name: "Noise-Canceling Headphones",
-        description: "Over-ear wireless headphones with active noise cancellation and 30-hour battery life.",
+        description:
+          "Over-ear wireless headphones with active noise cancellation and 30-hour battery life.",
         price: 19999,
       },
     ]);
