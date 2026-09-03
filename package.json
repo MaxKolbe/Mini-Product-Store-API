@@ -4,13 +4,13 @@
   "description": "A small end-to-end backend app where users sign up, browse products, pay for one with Stripe, and get emails along the way.",
   "main": "index.js",
   "scripts": {
-   	"build": "npm install --include=dev && npx tsc",
-		"start": "node dist/index.js",
-		"dev": "tsx watch --env-file=.env src/index.ts",
-		"watch": "tsc -w",
-		"db:generate": "drizzle-kit generate",
-		"db:studio": "drizzle-kit studio",
-		"db:migrate": "drizzle-kit migrate",
+    "build": "npm install --include=dev && npx tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "watch": "tsc -w",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx --env-file=.env src/scripts/seed.ts"
   },
   "repository": {
@@ -50,6 +50,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0",
     "redis": "^6.2.1",
+    "stripe": "^22.6.1",
     "tsx": "^4.23.13",
     "winston": "^3.19.0",
     "zod": "^4.5.4"

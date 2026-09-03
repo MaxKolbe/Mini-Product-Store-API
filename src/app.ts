@@ -6,6 +6,7 @@ import errorHandler from "./middleware/errorHandler.middleware.js";
 // import { connectRedis } from "./configs/cache.config.js";
 import authRouter from "./routes/auth.routes.js";
 import productsRouter from "./routes/products.routes.js";
+import checkoutRouter from "./routes/checkout.routes.js"
 import "./events/auth.events.js"
 
 const app = express();
@@ -41,6 +42,7 @@ app.use(requestLogger);
 //ROUTES
 app.use("/api/auth", authRouter); 
 app.use("/api/products", productsRouter); 
+app.use("/api/checkout", checkoutRouter); 
 
 // HANDLER FOR UNKNOWN ROUTES
 app.use((req, res) => {

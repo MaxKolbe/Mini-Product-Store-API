@@ -34,7 +34,7 @@ export const installExtensions = async () => {
 // SEED USERS TABLE
 const seedUser = async () => {
   try {
-    const newPassword = await hashPassword("1234")
+    const newPassword = await hashPassword("SecurePass1")
     await db.insert(users).values({
         email: "user@example.com",
         password: newPassword

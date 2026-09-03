@@ -1,0 +1,170 @@
+meta {
+  name: Checkout
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/checkout
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Cookie: accesstoken={{token}}
+}
+
+body:json {
+  {
+    "products": [
+      {
+        "productId": "c7a8b9d0-1234-5678-9abc-def012345678",
+        "quantity": 2
+      }
+    ]
+  }
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3000
+}
+
+docs {
+  # POST `/api/checkout`
+
+  Initiate a Stripe Checkout Session for selected products and receive a checkout session URL.
+
+  ---
+
+  ## Request
+
+  **Method:** `POST`  
+  **URL:** `/api/checkout`  
+  **Authentication:** Cookie (`accesstoken`) Required  
+  **Content-Type:** `application/json`
+
+  ### Request Body
+
+  | Field | Type | Required | Constraints |
+  |-------|------|----------|-------------|
+  | `products` | `array` | Yes | Minimum 1 item required (`.min(1)`). |
+  | `products[].productId` | `string` (UUID) | Yes | Must be a valid UUID. |
+  | `products[].quantity` | `number` (integer) | Yes | Must be a positive integer (`> 0`). |
+
+  ---
+
+  ## Responses
+
+  ### `200 OK` — Checkout Session Created Successfully
+
+  Returned when product details are queried, line items are computed in `NGN`, and a Stripe checkout session URL is generated.
+
+  ```json
+  {
+    "success": true,
+    "message": "checkout session created successfully",
+    "data": {
+      "url": "https://checkout.stripe.com/c/pay/cs_test_a1b2c3d4e5f6g7h8i9j0"
+    },
+    "meta": {
+      "correlationId": "req-abc123-xyz"
+    }
+  }
+  ```
+
+  #### Response Data Shape & Data Types
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `success` | `boolean` | Always `true` for successful responses. |
+  | `message` | `string` | Status message (`"checkout session created successfully"`). |
+  | `data` | `object` | Data container. |
+  | `data.url` | `string` (URL) | Redirect URL for the created Stripe Checkout Session. |
+  | `meta` | `object` | Metadata container. |
+  | `meta.correlationId` | `string` | Unique tracking ID assigned to the request lifecycle. |
+
+  ---
+
+  ### `401 Unauthorized` — Authentication Failure
+
+  Returned when the `accesstoken` cookie is missing, expired, or invalid.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "No token provided"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details object. |
+  | `error.code` | `string` | `"UNAUTHORIZED"`. |
+  | `error.message` | `string` | Error description (`"No token provided"`, `"Token expired"`, or `"Invalid token"`). |
+
+  ---
+
+  ### `400 Bad Request` — Validation Error
+
+  Returned when the request payload fails Zod schema validation (e.g., empty `products` array, invalid `productId` UUID, non-positive `quantity`).
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Request validation failed",
+      "details": [
+        {
+          "field": "body.products",
+          "message": "Array must contain at least 1 element(s)"
+        }
+      ]
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details container. |
+  | `error.code` | `string` | `"VALIDATION_ERROR"`. |
+  | `error.message` | `string` | `"Request validation failed"`. |
+  | `error.details` | `array` | List of field validation failure objects. |
+  | `error.details[].field` | `string` | The target field path failing validation. |
+  | `error.details[].message` | `string` | Description of the validation failure constraint. |
+
+  ---
+
+  ### `500 Internal Server Error` — Server / Stripe Failure
+
+  Returned when an unexpected error occurs in database querying or Stripe API communication.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected error occured"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details container. |
+  | `error.code` | `string` | `"INTERNAL_ERROR"`. |
+  | `error.message` | `string` | Description of the internal error. |
+}
