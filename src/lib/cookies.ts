@@ -1,4 +1,6 @@
-const isProduction = process.env.NODE_ENV === "production";
+import { env } from "../configs/env.config.js"
+
+const isProduction = env.NODE_ENV === "production";
 const sameSite = isProduction ? "none" : "lax";
 
 export const cookieOptions = {

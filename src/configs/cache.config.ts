@@ -1,14 +1,15 @@
 import { createClient, RedisClientType } from "redis";
+import { env } from "../configs/env.config.js"
 import logger from "./logger.config.js";
 
 const MAX_RETRIES = 5;
 
 const redisMap = new Map([
-  ["test", process.env.REDIS_TEST_URL],
-  ["development", process.env.REDIS_DEV_URL],
-  ["production", process.env.REDIS_PROD_URL],
+  ["test", env.REDIS_TEST_URL],
+  ["development", env.REDIS_DEV_URL],
+  ["production", env.REDIS_PROD_URL],
 ]);
-const redisUrl = redisMap.get(process.env.NODE_ENV!);
+const redisUrl = redisMap.get(env.NODE_ENV);
 
 const redisClient: RedisClientType = createClient({
   url: redisUrl!,

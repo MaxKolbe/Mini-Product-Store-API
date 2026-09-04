@@ -8,10 +8,11 @@ import authRouter from "./routes/auth.routes.js";
 import productsRouter from "./routes/products.routes.js";
 import checkoutRouter from "./routes/checkout.routes.js"
 import "./events/auth.events.js"
+import { env } from "./configs/env.config.js"
+ 
+const app = express(); 
 
-const app = express();
-
-const whitelist = [`http://localhost:${process.env.PORT}`];
+const whitelist = [`http://localhost:${env.PORT}`];
 const corsOptions = {
   origin: function (
     origin: string | undefined,

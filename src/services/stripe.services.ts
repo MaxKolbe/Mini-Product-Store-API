@@ -1,8 +1,9 @@
 import Stripe from "stripe";
 import logger from "../configs/logger.config.js";
 import { LineItems } from "../types/checkout.js";
+import { env } from "../configs/env.config.js"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
 export const createSession = async (lineItems: LineItems, customerEmail: string) => {
   try {
@@ -10,7 +11,7 @@ export const createSession = async (lineItems: LineItems, customerEmail: string)
       line_items: lineItems,
       mode: "payment",
       customer_email: customerEmail,
-      success_url: `${process.env.API_BASE_URL}api/checkout?success=true`,
+      success_url: `${env.API_BASE_URL}/api/checkout?success=true`,
     });
 
     return session;

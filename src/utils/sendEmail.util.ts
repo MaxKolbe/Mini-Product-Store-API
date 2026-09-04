@@ -1,8 +1,9 @@
 import ejs from "ejs";
 import logger from "../configs/logger.config.js";
 import { BrevoClient, BrevoError } from "@getbrevo/brevo";
+import { env } from "../configs/env.config.js"
 
-const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY!.toString() });
+const brevo = new BrevoClient({ apiKey: env.BREVO_API_KEY.toString() });
 
 export const sendEmail = async (
   to: string,
@@ -20,7 +21,7 @@ export const sendEmail = async (
     const result = await brevo.transactionalEmails.sendTransacEmail({
       subject,
       htmlContent: html,
-      sender: { name, email: process.env.BREVO_EMAIL!.toString() },
+      sender: { name, email: env.BREVO_EMAIL.toString() },
       to: [{ email: to }],
     });
 
