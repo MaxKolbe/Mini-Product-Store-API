@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import logger from "../configs/logger.config.js";
 import { LineItems } from "../types/checkout.js";
-import { env } from "../configs/env.config.js"
+import { env } from "../configs/env.config.js";
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
@@ -15,56 +15,55 @@ export const createSession = async (lineItems: LineItems, customerEmail: string)
     });
 
     return session;
-  } catch (error: any) {
-    switch (error.type) {
-      case "StripeCarderror":
-        logger.error(`declined card error for ${customerEmail}`, {
-          status: error.statusCode,
-          code: error.code,
-          message: error.message,
-          requestId: error.requestId,
-        });
-        break;
-      case "StripeRateLimiterror":
-        logger.error("Too many requests made to the API too quickly", {
-          customerEmail,
-          requestId: error.requestId,
-        });
-        break;
-      case "StripeInvalidRequesterror":
-        logger.error("Invalid parameters were supplied to Stripe's API", {
-          message: error.message,
-          requestId: error.requestId,
-        });
-        break;
-      case "StripeAPIerror":
-        logger.error("An error occurred internally with Stripe's API", {
-          requestId: error.requestId,
-        });
-        break;
-      case "StripeConnectionerror":
-        logger.error("Some kind of error occurred during the HTTPS communication", {
-          requestId: error.requestId,
-        });
-        break;
-      case "StripeAuthenticationerror":
-        logger.error("StripeAuthenticationerror", {
-          requestId: error.requestId,
-          note: "You probably used an incorrect API key",
-        });
-        break;
-      default:
-        if (error instanceof stripe.errors.StripeError) {
+  } catch (error: unknown) {
+    if (error instanceof stripe.errors.StripeError) {
+      switch (error.type) {
+        case "StripeCardError":
+          logger.error(`declined card error for ${customerEmail}`, {
+            status: error.statusCode,
+            code: error.code,
+            message: error.message,
+            requestId: error.requestId,
+          });
+          throw error;
+        case "StripeRateLimitError":
+          logger.error("Too many requests made to the API too quickly", {
+            customerEmail,
+            requestId: error.requestId,
+          });
+          throw error;
+        case "StripeInvalidRequestError":
+          logger.error("Invalid parameters were supplied to Stripe's API", {
+            message: error.message,
+            requestId: error.requestId,
+          });
+          throw error;
+        case "StripeAPIError":
+          logger.error("An error occurred internally with Stripe's API", {
+            requestId: error.requestId,
+          });
+          throw error;
+        case "StripeConnectionError":
+          logger.error("Some kind of error occurred during the HTTPS communication", {
+            requestId: error.requestId,
+          });
+          throw error;
+        case "StripeAuthenticationError":
+          logger.error("StripeAuthenticationerror", {
+            requestId: error.requestId,
+            note: "You probably used an incorrect API key",
+          });
+          throw error;
+        default:
           logger.error(`Stripe Error`, {
             status: error.statusCode,
             code: error.code,
             message: error.message,
             requestId: error.requestId,
           });
-        } else {
           throw error;
-        }
-        break;
+      }
     }
+    throw error;
   }
 };

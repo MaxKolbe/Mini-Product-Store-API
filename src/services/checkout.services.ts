@@ -34,7 +34,7 @@ export const checkout = async (body: CheckoutType["body"], correlationId: string
     code: 200,
     message: "checkout session created successfully",
     data: {
-      url: session!.url
+      url: session.url
     },
     meta: {
       correlationId,
