@@ -1,11 +1,12 @@
 import { defineConfig } from "drizzle-kit";
+import { env } from "./src/configs/env.config"
 
 const dbMap = new Map([
-  ["development", process.env.PG_DATABASE_DEV_URL!.toString()],
-  ["test", process.env.PG_DATABASE_TEST_URL!.toString()],
-  ["production", process.env.PG_DATABASE_PROD_URL!.toString()]
+  ["development", env.PG_DATABASE_DEV_URL!.toString()],
+  ["test", env.PG_DATABASE_TEST_URL!.toString()],
+  ["production", env.PG_DATABASE_PROD_URL!.toString()]
 ])
-const dburl = dbMap.get(process.env.NODE_ENV!)
+const dburl = dbMap.get(env.NODE_ENV!)
 
 export default defineConfig({   
   out: "./drizzle",

@@ -11,7 +11,7 @@ export const authenticate = () => async (req: Request, res: Response, next: Next
   try {
     const payload = verifyToken(token);
 
-    req.user = { id: payload.sub };
+    req.user = { id: payload.sub, email: payload.email };
 
     next();
   } catch (error: any) {

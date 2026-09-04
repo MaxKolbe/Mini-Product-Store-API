@@ -4,12 +4,15 @@ import cookieParser from "cookie-parser";
 import requestLogger from "./middleware/requestLogger.middleware.js";
 import errorHandler from "./middleware/errorHandler.middleware.js";
 // import { connectRedis } from "./configs/cache.config.js";
-import authRouter from "./routes/auth.routes.js"
+import authRouter from "./routes/auth.routes.js";
+import productsRouter from "./routes/products.routes.js";
+import checkoutRouter from "./routes/checkout.routes.js"
 import "./events/auth.events.js"
+import { env } from "./configs/env.config.js"
+ 
+const app = express(); 
 
-const app = express();
-
-const whitelist = [`http://localhost:${process.env.PORT}`];
+const whitelist = [`http://localhost:${env.PORT}`];
 const corsOptions = {
   origin: function (
     origin: string | undefined,
@@ -39,6 +42,8 @@ app.use(requestLogger);
 
 //ROUTES
 app.use("/api/auth", authRouter); 
+app.use("/api/products", productsRouter); 
+app.use("/api/checkout", checkoutRouter); 
 
 // HANDLER FOR UNKNOWN ROUTES
 app.use((req, res) => {

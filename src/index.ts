@@ -1,8 +1,9 @@
 import app from "./app.js";
 import { connectDatabase } from "./db/db.js";
 import logger from "./configs/logger.config.js";
+import { env } from "./configs/env.config.js"
 
-const port = process.env.PORT || 3000;
+const port = env.PORT || 3000;
 
 (async () => {
   await connectDatabase();
