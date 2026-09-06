@@ -1,0 +1,205 @@
+meta {
+  name: List Orders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/orders?page=1&limit=25&orderBy=desc
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  limit: 25
+  orderBy: desc
+}
+
+
+vars:pre-request {
+  baseUrl: http://localhost:3000
+}
+
+docs {
+  # GET `/api/orders`
+
+  Retrieve a paginated list of orders belonging to the authenticated user, including order items with associated product details. Orders are sorted by creation date (newest first by default).
+
+  ---
+
+  ## Request
+
+  **Method:** `GET`  
+  **URL:** `/api/orders`  
+  **Authentication:** Bearer Token (JWT via `accesstoken` cookie)
+
+  ### Query Parameters
+
+  | Parameter | Type | Required | Default | Description |
+  |-----------|------|----------|---------|-------------|
+  | `page` | `number` | No | `1` | Page number for pagination (minimum: 1). |
+  | `limit` | `number` | No | `25` | Number of items per page (minimum: 1, maximum: 100). |
+  | `orderBy` | `string` (`"asc"` \| `"desc"`) | No | `"desc"` | Sort direction by `createdAt` date. |
+
+  ---
+
+  ## Responses
+
+  ### `200 OK` — Orders Retrieved Successfully
+
+  Returned when orders are successfully fetched for the authenticated user according to pagination parameters.
+
+  ```json
+  {
+    "success": true,
+    "message": "orders retrieved successfully",
+    "data": [
+      {
+        "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+        "amount": 17998,
+        "status": "paid",
+        "stripeCheckoutSessionId": "cs_test_a1b2c3d4e5f6g7h8i9j0",
+        "createdAt": "2026-09-06T18:30:00.000Z",
+        "updatedAt": "2026-09-06T18:30:00.000Z",
+        "items": [
+          {
+            "productId": "c7a8b9d0-1234-5678-9abc-def012345678",
+            "quantity": 2,
+            "amount": 17998,
+            "product": {
+              "name": "Wireless Mechanical Keyboard",
+              "price": 8999
+            }
+          }
+        ]
+      }
+    ],
+    "meta": {
+      "correlationId": "req-abc123-xyz",
+      "pagination": {
+        "page": 1,
+        "limit": 25,
+        "totalRecords": 3,
+        "totalPages": 1,
+        "hasNextPage": false,
+        "hasPrevPage": false
+      }
+    }
+  }
+  ```
+
+  #### Response Data Shape & Data Types
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `success` | `boolean` | Always `true` for successful responses. |
+  | `message` | `string` | Status message (`"orders retrieved successfully"`). |
+  | `data` | `array` | List of order records belonging to the authenticated user. |
+  | `data[].id` | `string` (UUID v4) | Unique primary key identifier for the order. |
+  | `data[].amount` | `number` (integer) | Total order amount in cents (e.g., `17998` represents $179.98). |
+  | `data[].status` | `string` | Order payment status (e.g., `"paid"`). |
+  | `data[].stripeCheckoutSessionId` | `string` | Stripe Checkout Session ID associated with the order. |
+  | `data[].createdAt` | `string` (ISO 8601 Date) | Timestamp when the order was created. |
+  | `data[].updatedAt` | `string` (ISO 8601 Date) | Timestamp when the order was last updated. |
+  | `data[].items` | `array` | List of line items within the order. |
+  | `data[].items[].productId` | `string` (UUID v4) | Unique identifier of the purchased product. |
+  | `data[].items[].quantity` | `number` (integer) | Quantity of the product ordered. |
+  | `data[].items[].amount` | `number` (integer) | Line item total in cents (e.g., `17998` for 2 × $89.99). |
+  | `data[].items[].product` | `object` | Associated product details. |
+  | `data[].items[].product.name` | `string` | Product title/name. |
+  | `data[].items[].product.price` | `number` (integer) | Unit price of the product in cents. |
+  | `meta` | `object` | Metadata container. |
+  | `meta.correlationId` | `string` | Unique identifier assigned to track the request lifecycle. |
+  | `meta.pagination` | `object` | Pagination details. |
+  | `meta.pagination.page` | `number` (integer) | Current page number. |
+  | `meta.pagination.limit` | `number` (integer) | Max items per page. |
+  | `meta.pagination.totalRecords` | `number` (integer) | Total matching order count for the authenticated user. |
+  | `meta.pagination.totalPages` | `number` (integer) | Calculated total pages available (`Math.ceil(total / limit)`). |
+  | `meta.pagination.hasNextPage` | `boolean` | Indicates if subsequent pages exist (`page < totalPages`). |
+  | `meta.pagination.hasPrevPage` | `boolean` | Indicates if previous pages exist (`page > 1`). |
+
+  ---
+
+  ### `401 Unauthorized` — Authentication Missing or Invalid
+
+  Returned when the `accesstoken` cookie is missing or contains an invalid/expired JWT token.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "No token provided"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details object. |
+  | `error.code` | `string` | Error code (`"UNAUTHORIZED"`). |
+  | `error.message` | `string` | Description of authentication error (e.g., `"No token provided"`, `"Token expired"`, `"Invalid token"`). |
+
+  ---
+
+  ### `400 Bad Request` — Validation Error
+
+  Returned when query parameters fail Zod schema validation (e.g. `page` < 1, `limit` > 100, `orderBy` invalid value).
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Request validation failed",
+      "details": [
+        {
+          "field": "query.limit",
+          "message": "Number must be less than or equal to 100"
+        }
+      ]
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error details object. |
+  | `error.code` | `string` | `"VALIDATION_ERROR"`. |
+  | `error.message` | `string` | `"Request validation failed"`. |
+  | `error.details` | `array` | List of field validation failures. |
+  | `error.details[].field` | `string` | Target field path that failed validation. |
+  | `error.details[].message` | `string` | Error message describing the rule violation. |
+
+  ---
+
+  ### `500 Internal Server Error` — Server Failure
+
+  Returned when an unhandled server or database error occurs.
+
+  ```json
+  {
+    "status": false,
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected error occured"
+    }
+  }
+  ```
+
+  #### Response Shape
+
+  | Field | Type | Description |
+  |-------|------|-------------|
+  | `status` | `boolean` | Always `false` for error responses. |
+  | `error` | `object` | Error container. |
+  | `error.code` | `string` | `"INTERNAL_ERROR"`. |
+  | `error.message` | `string` | Error description. |
+}
