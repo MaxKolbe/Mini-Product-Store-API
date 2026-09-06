@@ -4,6 +4,9 @@ export type LineItem = {
     product_data: {
       name: string;
       description: string;
+      metadata?: {
+        productId: string;
+      };
     };
     unit_amount: number;
   };

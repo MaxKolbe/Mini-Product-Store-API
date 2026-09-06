@@ -3,13 +3,16 @@ import { LineItems } from "../types/checkout.js";
 import { env } from "../configs/env.config.js";
 import { stripe } from "../lib/stripe.js";
 
-export const createSession = async (lineItems: LineItems, customerEmail: string) => {
+export const createSession = async (lineItems: LineItems, customerEmail: string, customerId: string) => {
   try {
     const session = await stripe.checkout.sessions.create({
       line_items: lineItems,
       mode: "payment",
       customer_email: customerEmail,
       success_url: `${env.API_BASE_URL}/api/checkout?success=true`,
+      metadata: {
+        userId: customerId
+      }
     });
 
     return session;

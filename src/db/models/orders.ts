@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { users } from "./users.js";
 import { products } from "./products.js";
 
-export const order = p.pgTable("order", {
+export const orders = p.pgTable("orders", {
   id: p
     .uuid()
     .default(sql`uuid_generate_v4()`)
@@ -27,7 +27,7 @@ export const orderItem = p.pgTable("order_item", {
   orderId: p
     .uuid("order_id")
     .notNull()
-    .references(() => order.id),
+    .references(() => orders.id),
   productId: p
     .uuid("product_id")
     .notNull()

@@ -4,7 +4,7 @@ import { checkout } from "../services/checkout.services.js";
 
 export const checkoutController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await checkout(req.body, (req as any).correlationId, (req as any).user.email)
+    const response = await checkout(req.body, (req as any).correlationId, (req as any).user)
     return successResponse(res, 200, response.message, response.data, response.meta)
   } catch (error) {
     next(error);

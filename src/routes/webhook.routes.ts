@@ -1,6 +1,7 @@
 //ROUTES
 import { env } from "../configs/env.config.js";
 import { stripe } from "../lib/stripe.js";
+import { fulfillOrder } from "../services/order.services.js";
 import logger from "../configs/logger.config.js";
 import type Stripe from "stripe";
 import express from "express";
@@ -30,25 +31,28 @@ router.post("/stripe", async (req, res) => {
     });
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": 
-      const session = event.data.object; 
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": 
+      logger.debug("i got here")
+        const session = event.data.object;
+        await fulfillOrder(session);
+        break;
+      default:
+        logger.info("Unhandled Stripe webhook event", {
+          eventType: event.type,
+        });
+    }
 
-      logger.info("Stripe checkout completed", {
-        eventId: event.id,
-        sessionId: session.id,
-      });
+    return res.status(200).json({ received: true });
+  } catch (error) {
+    logger.error("Stripe webhook processing failed", {
+      eventId: event.id,
+      error,
+    });
 
-      break;
-    default:
-      logger.info("Unhandled Stripe webhook event", {
-        eventType: event.type,
-      });
+    return res.status(500).json({ message: "Webhook processing failed" });
   }
-
-  return res.status(200).json({
-    received: true,
-  });
 });
 
 export default router;
