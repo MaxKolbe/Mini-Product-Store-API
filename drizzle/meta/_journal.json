@@ -15,6 +15,13 @@
       "when": 1788436648280,
       "tag": "0001_youthful_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788722827213,
+      "tag": "0002_lyrical_jackal",
+      "breakpoints": true
     }
   ]
 }

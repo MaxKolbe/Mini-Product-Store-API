@@ -1,9 +1,7 @@
-import Stripe from "stripe";
 import logger from "../configs/logger.config.js";
 import { LineItems } from "../types/checkout.js";
 import { env } from "../configs/env.config.js";
-
-const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+import { stripe } from "../lib/stripe.js";
 
 export const createSession = async (lineItems: LineItems, customerEmail: string) => {
   try {
