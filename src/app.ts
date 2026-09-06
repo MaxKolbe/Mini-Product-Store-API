@@ -9,6 +9,7 @@ import productsRouter from "./routes/products.routes.js";
 import checkoutRouter from "./routes/checkout.routes.js";
 import webhookRouter from "./routes/webhook.routes.js";
 import "./events/auth.events.js";
+import "./events/orders.events.js";
 import { env } from "./configs/env.config.js";
 
 const app = express();

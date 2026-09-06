@@ -1,10 +1,12 @@
 import type Stripe from "stripe";
 import db from "../db/db.js";
 import logger from "../configs/logger.config.js";
-import { orderItem, orders } from "../db/models/orders.js";
-import { products } from "../db/models/products.js";
 import { eq, inArray } from "drizzle-orm";
 import { stripe } from "../lib/stripe.js";
+import { appEvents } from "../lib/events.js";
+import { products } from "../db/models/products.js";
+import { ORDER_EVENTS } from "../events/orders.events.js";
+import { orderItem, orders } from "../db/models/orders.js";
 
 type FulfillmentItem = {
   productId: string;
@@ -88,11 +90,12 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
   const productIds = items.map((item) => item.productId);
 
   const existingProducts = await db
-    .select({ id: products.id })
+    .select({ id: products.id, name: products.name })
     .from(products)
     .where(inArray(products.id, productIds));
 
   const existingProductIds = new Set(existingProducts.map((product) => product.id));
+  const productNameMap = new Map(existingProducts.map((product) => [product.id, product.name]));
 
   const missingProductIds = productIds.filter((productId) => !existingProductIds.has(productId));
 
@@ -102,8 +105,10 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
     );
   }
 
+  let newOrder: typeof orders.$inferSelect | undefined;
+
   await db.transaction(async (tx) => {
-    const [newOrder] = await tx
+    const [inserted] = await tx
       .insert(orders)
       .values({
         userId,
@@ -116,7 +121,7 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
       })
       .returning();
 
-    if (!newOrder) {
+    if (!inserted) {
       logger.info("Order already fulfilled", {
         sessionId: session.id,
       });
@@ -126,18 +131,43 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
 
     await tx.insert(orderItem).values(
       items.map((item) => ({
-        orderId: newOrder.id,
+        orderId: inserted.id,
         productId: item.productId,
         quantity: item.quantity,
         amount: item.amount,
       })),
     );
+
+    newOrder = inserted;
   });
 
-  // Emit order.created 
+  if (!newOrder) {
+    return;
+  }
+
+  const customerEmail = session.customer_email;
+
+  if (!customerEmail) {
+    logger.warn("Missing customer email on checkout session, skipping receipt", {
+      sessionId: session.id,
+    });
+  } else {
+    appEvents.emit(ORDER_EVENTS.ORDER_CREATED, {
+      email: customerEmail,
+      orderId: newOrder.id,
+      amount: session.amount_total!,
+      items: items.map((item) => ({
+        name: productNameMap.get(item.productId) ?? "Unknown Product",
+        quantity: item.quantity,
+        amount: item.amount,
+      })),
+      createdAt: newOrder.createdAt,
+    });
+  }
 
   logger.info("Order fulfilled successfully", {
     sessionId: session.id,
     userId,
+    orderId: newOrder.id,
   });
 };
