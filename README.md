@@ -66,6 +66,7 @@ cp .env.example .env
 | `BREVO_API_KEY` | API key from your Brevo account | `xkeysib-...` |
 | `BREVO_EMAIL` | Sender email address registered in Brevo | `noreply@example.com` |
 | `STRIPE_SECRET_KEY` | Secret key from your Stripe dashboard | `sk_test_...` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (from Stripe Dashboard or `stripe listen` output) | `whsec_...` |
 | `API_BASE_URL` | Base URL of the running API (used for Stripe success/cancel redirect URLs) | `http://localhost:3000/` |
 
 #   Database setup/migrations
@@ -116,6 +117,29 @@ npm run db:studio
 
 **Indexes:** `products_name_idx` on `name`, `products_desc_idx` on `description`, `products_price_idx` on `price`, `products_createdat_idx` on `created_at`.
 
+**`orders`** table:
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | Primary key, auto-generated (`uuid_generate_v4()`) |
+| `user_id` | `uuid` | Not null, foreign key → `users.id` |
+| `amount` | `integer` | Not null (total in minor currency units) |
+| `status` | `text` | Not null (e.g., `"paid"`) |
+| `stripe_checkout_session_id` | `text` | Not null, unique (used for idempotent fulfillment) |
+| `created_at` | `timestamp` | Not null, defaults to `now()` |
+| `updated_at` | `timestamp` | Not null, defaults to `now()` |
+
+**`order_item`** table:
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | Primary key, auto-generated (`uuid_generate_v4()`) |
+| `order_id` | `uuid` | Not null, foreign key → `orders.id` |
+| `product_id` | `uuid` | Not null, foreign key → `products.id` |
+| `quantity` | `integer` | Not null |
+| `amount` | `integer` | Not null (line item total in minor currency units) |
+| `created_at` | `timestamp` | Not null, defaults to `now()` |
+
 #   Running locally
 
 ```bash
@@ -128,6 +152,24 @@ npm start        # runs dist/index.js
 ```
 
 The server starts on the port defined by `PORT` (defaults to `3000`).
+
+### Stripe webhook local testing
+
+To receive Stripe webhook events locally, use the **Stripe CLI** to forward events to your running dev server:
+
+```bash
+stripe listen --forward-to localhost:3000/webhooks/stripe
+```
+
+The CLI will output a webhook signing secret (`whsec_...`). Copy this value into your `.env` as `STRIPE_WEBHOOK_SECRET`.
+
+The local flow is:
+
+```text
+Stripe → Stripe CLI → POST /webhooks/stripe (local dev server)
+```
+
+> **Note:** When using Stripe CLI forwarding, you do **not** need to register a webhook endpoint in the Stripe Dashboard. The CLI intercepts events directly from your Stripe account. Both the application and the Stripe CLI must be configured against the **same Stripe account/sandbox**.
 
 #   API endpoints
 
@@ -330,6 +372,98 @@ Placeholder success callback endpoint. Stripe redirects here after a successful 
 
 ---
 
+### Webhooks
+
+#### `POST /webhooks/stripe`
+
+Stripe webhook endpoint. Handles incoming Stripe events with signature verification. This route is mounted **before** `express.json()` and uses `express.raw()` so that the raw request body is available for Stripe's signature verification.
+
+Stripe sends a `stripe-signature` header with each event. The application verifies it against `STRIPE_WEBHOOK_SECRET` using `stripe.webhooks.constructEvent()`.
+
+**Handled events:**
+
+| Event | Action |
+|---|---|
+| `checkout.session.completed` | Calls `fulfillOrder()` to create the order and order items, then emits `order.created` |
+
+Unhandled event types are logged and acknowledged with `200`.
+
+**Responses:**
+
+| Status | Condition |
+|---|---|
+| `200` | Event processed (or unhandled event type acknowledged) |
+| `400` | Missing `stripe-signature` header or signature verification failed |
+| `500` | Order fulfillment failed |
+
+---
+
+### Orders
+
+#### `GET /api/orders`
+
+Retrieve a paginated list of orders belonging to the authenticated user. **Requires authentication** (JWT in `accesstoken` cookie).
+
+Each order includes its line items with associated product details. Orders are sorted by creation date (newest first by default).
+
+**Query parameters:**
+
+| Parameter | Type | Default | Constraints |
+|---|---|---|---|
+| `page` | `number` | `1` | Minimum: 1 |
+| `limit` | `number` | `25` | Min: 1, Max: 100 |
+| `orderBy` | `string` | `"desc"` | `"asc"` or `"desc"` (sorts by `created_at`) |
+
+**Success response (`200`):**
+```json
+{
+  "success": true,
+  "message": "orders retrieved successfully",
+  "data": [
+    {
+      "id": "a1b2c3d4-...",
+      "amount": 17998,
+      "status": "paid",
+      "stripeCheckoutSessionId": "cs_test_...",
+      "createdAt": "2026-09-06T18:30:00.000Z",
+      "updatedAt": "2026-09-06T18:30:00.000Z",
+      "items": [
+        {
+          "productId": "305fe4da-...",
+          "quantity": 2,
+          "amount": 17998,
+          "product": {
+            "name": "Wireless Mechanical Keyboard",
+            "price": 8999
+          }
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "correlationId": "uuid-...",
+    "pagination": {
+      "page": 1,
+      "limit": 25,
+      "totalRecords": 3,
+      "totalPages": 1,
+      "hasNextPage": false,
+      "hasPrevPage": false
+    }
+  }
+}
+```
+
+A user can only retrieve their own orders. If the user has no orders, `data` is an empty array with `totalRecords: 0`.
+
+**Error responses:**
+
+| Status | Code | Condition |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | Invalid query params (e.g., `page` < 1, `limit` > 100) |
+| `401` | `UNAUTHORIZED` | Missing, expired, or invalid JWT token |
+
+
 #### Unknown routes
 
 Any request to an undefined route returns:
@@ -357,7 +491,7 @@ Every request is assigned a unique correlation ID (UUID). You can also supply yo
 
 2. **Login** – The submitted password is compared against the stored hash using `bcrypt.compare`. On success, a **JWT** is generated containing the user's `id` as the `sub` claim and `email`, signed with `JWT_SECRET`, and set to expire in **20 minutes**. The token is returned in the response body under `meta.token` and set in the browser's cookie-jar as `accesstoken`.
 
-3. **Protected routes** – The `authenticate` middleware reads a JWT from the `accesstoken` cookie, verifies it with `jsonwebtoken`, and attaches `req.user = { id, email }` to the request. It throws `UnauthorizedError` for missing, expired, or invalid tokens. Currently used by the `POST /api/checkout` route.
+3. **Protected routes** – The `authenticate` middleware reads a JWT from the `accesstoken` cookie, verifies it with `jsonwebtoken`, and attaches `req.user = { id, email }` to the request. It throws `UnauthorizedError` for missing, expired, or invalid tokens. Used by the `POST /api/checkout` and `GET /api/orders` routes.
 
 4. **Error classes** – The app defines structured error classes (`ValidationError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`) that extend a base `AppError`. The global error handler middleware catches these and returns consistent JSON error responses with `status`, `error.code`, and `error.message`.
 
@@ -370,15 +504,87 @@ The email system uses the **Brevo transactional email API** (`@getbrevo/brevo` S
 2. **Email rendering** – Email HTML is built using **EJS templates** in `src/views/`:
    - `template.ejs` – The outer HTML wrapper (layout with title and styled container)
    - `welcome.ejs` – The welcome email content, greeting the user by the local part of their email address
+   - `orderreceipt.ejs` – The order confirmation/receipt email content, displaying order details, itemised line items, and total
 
-3. **Sending flow** – When a user registers, the auth service emits an `auth:signup` event via Node's `EventEmitter`. The listener in `src/events/auth.events.ts` renders the welcome template and calls `sendEmail()`, which sends the transactional email through Brevo's `sendTransacEmail` API.
+3. **Sending flow** – When a user registers, the auth service emits an `auth:signup` event via Node's `EventEmitter`. The listener in `src/events/auth.events.ts` renders the welcome template and calls `sendEmail()`, which sends the transactional email through Brevo's `sendTransacEmail` API. The same pattern is used for order receipt emails (see *How the Stripe webhook and order receipt flow works* below).
 
-4. **Error handling** – The email utility handles Brevo-specific errors (401 invalid API key, 429 rate limiting, and general `BrevoError` instances), logging each with Winston. Email failures do **not** cause the registration request to fail — they are handled asynchronously in the event listener.
+4. **Error handling** – The email utility handles Brevo-specific errors (401 invalid API key, 429 rate limiting, and general `BrevoError` instances), logging each with Winston. Email failures do **not** cause the originating request to fail — they are handled asynchronously in the event listener.
 
 5. **Auth events** – Three events are defined:
    - `auth:signup` → sends welcome email + logs
    - `auth:login` → logs successful login
    - `auth:login-fail` → logs failed login attempt with reason
+
+6. **Order events** – One event is defined:
+   - `order:created` → sends order confirmation/receipt email with bounded retry (see below)
+
+#   How the Stripe webhook and order receipt flow works
+
+The payment-to-receipt flow is:
+
+```text
+Stripe (checkout.session.completed)
+    ↓
+POST /webhooks/stripe
+    ↓
+Verify Stripe signature
+    ↓
+fulfillOrder(session)
+    ↓
+DB transaction commits (order + order_items)
+    ↓
+appEvents.emit("order:created", payload)
+    ↓
+Event listener renders receipt template
+    ↓
+sendEmail() → Brevo API
+```
+
+### Webhook processing
+
+1. The `POST /webhooks/stripe` endpoint receives the raw request body (mounted with `express.raw()` before `express.json()` to preserve the raw buffer for signature verification).
+2. The Stripe signature is verified using `stripe.webhooks.constructEvent()` with `STRIPE_WEBHOOK_SECRET`.
+3. For `checkout.session.completed` events, `fulfillOrder()` is called with the Checkout Session object.
+
+### Order fulfillment
+
+`fulfillOrder()` in `src/services/order.services.ts`:
+
+1. Confirms `payment_status === "paid"`.
+2. Guards against duplicate fulfillment by checking if an order with the same `stripe_checkout_session_id` already exists.
+3. Retrieves Stripe line items and resolves each to an internal product ID via Stripe product metadata.
+4. Creates the `order` and `order_item` records **transactionally**.
+5. After the transaction commits, emits the `order:created` event with the customer email, order ID, total amount, enriched line items (with product names), and creation timestamp.
+
+### Receipt email (non-critical side effect)
+
+The receipt email is intentionally treated as a **non-critical side effect**. The database transaction and order fulfillment succeed independently of the email — the event is emitted **after** the transaction commits, and the listener runs fire-and-forget on the Node.js `EventEmitter`.
+
+The listener in `src/events/orders.events.ts`:
+
+1. Renders `orderreceipt.ejs` with the order data.
+2. Attempts to send the email via Brevo with **bounded retry** — up to 3 attempts with exponential backoff (1 s → 2 s → 4 s).
+3. Each failed attempt is logged as a warning; final failure after all retries is logged as an error.
+4. All errors are caught within the listener. Email failures never propagate to or affect the webhook response.
+
+### Why a durable background job was not introduced
+
+The project intentionally keeps the architecture **simple and proportional** to the scope:
+
+- An in-process Node.js `EventEmitter` is sufficient for the current requirement of sending a single receipt email after order fulfillment.
+- Introducing Redis, a message broker, a queue worker, or other durable job infrastructure would add operational and architectural complexity that is unnecessary for this assessment.
+- The email is deliberately decoupled from the critical payment/order fulfillment path — it is a best-effort side effect, not a transactional guarantee.
+
+### Known tradeoff
+
+> The in-process `EventEmitter` does not provide durable job persistence.
+
+Practical implications:
+
+- If the application process crashes before or during email processing, an email event can be lost.
+- There is no persistent queue guaranteeing eventual delivery.
+- Failed emails are retried only within the current application process (up to 3 attempts).
+- This is a **deliberate simplicity tradeoff** rather than a durable messaging solution. A production system at scale would typically introduce a persistent job queue (e.g., BullMQ with Redis, or a dedicated message broker).
 
 #   How to test registration/login
 
@@ -400,7 +606,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 
 ### Using Bruno
 
-The project includes Bruno API collection files in `src/docs/api-docs/` with pre-configured requests for the `register`, `login`, `list products`, and `checkout` endpoints. Open the collection folder in [Bruno](https://www.usebruno.com/) to send requests interactively.
+The project includes Bruno API collection files in `src/docs/api-docs/` with pre-configured requests for the `register`, `login`, `list products`, `checkout`, and `list orders` endpoints. Open the collection folder in [Bruno](https://www.usebruno.com/) to send requests interactively.
 
 ### Integration tests
 
