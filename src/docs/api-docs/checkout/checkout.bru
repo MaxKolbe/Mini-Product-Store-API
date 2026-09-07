@@ -19,7 +19,7 @@ body:json {
   {
     "products": [
       {
-        "productId": "c7a8b9d0-1234-5678-9abc-def012345678",
+        "productId": "c3b415b2-6f3b-4415-99a2-536f7fe0017a",
         "quantity": 2
       }
     ]
@@ -32,34 +32,34 @@ vars:pre-request {
 
 docs {
   # POST `/api/checkout`
-
+  
   Initiate a Stripe Checkout Session for selected products and receive a checkout session URL.
-
+  
   ---
-
+  
   ## Request
-
+  
   **Method:** `POST`  
   **URL:** `/api/checkout`  
   **Authentication:** Cookie (`accesstoken`) Required  
   **Content-Type:** `application/json`
-
+  
   ### Request Body
-
+  
   | Field | Type | Required | Constraints |
   |-------|------|----------|-------------|
   | `products` | `array` | Yes | Minimum 1 item required (`.min(1)`). |
   | `products[].productId` | `string` (UUID) | Yes | Must be a valid UUID. |
   | `products[].quantity` | `number` (integer) | Yes | Must be a positive integer (`> 0`). |
-
+  
   ---
-
+  
   ## Responses
-
+  
   ### `200 OK` — Checkout Session Created Successfully
-
+  
   Returned when product details are queried, line items are computed in `NGN`, and a Stripe checkout session URL is generated.
-
+  
   ```json
   {
     "success": true,
@@ -72,9 +72,9 @@ docs {
     }
   }
   ```
-
+  
   #### Response Data Shape & Data Types
-
+  
   | Field | Type | Description |
   |-------|------|-------------|
   | `success` | `boolean` | Always `true` for successful responses. |
@@ -83,13 +83,13 @@ docs {
   | `data.url` | `string` (URL) | Redirect URL for the created Stripe Checkout Session. |
   | `meta` | `object` | Metadata container. |
   | `meta.correlationId` | `string` | Unique tracking ID assigned to the request lifecycle. |
-
+  
   ---
-
+  
   ### `401 Unauthorized` — Authentication Failure
-
+  
   Returned when the `accesstoken` cookie is missing, expired, or invalid.
-
+  
   ```json
   {
     "status": false,
@@ -99,22 +99,22 @@ docs {
     }
   }
   ```
-
+  
   #### Response Shape
-
+  
   | Field | Type | Description |
   |-------|------|-------------|
   | `status` | `boolean` | Always `false` for error responses. |
   | `error` | `object` | Error details object. |
   | `error.code` | `string` | `"UNAUTHORIZED"`. |
   | `error.message` | `string` | Error description (`"No token provided"`, `"Token expired"`, or `"Invalid token"`). |
-
+  
   ---
-
+  
   ### `400 Bad Request` — Validation Error
-
+  
   Returned when the request payload fails Zod schema validation (e.g., empty `products` array, invalid `productId` UUID, non-positive `quantity`).
-
+  
   ```json
   {
     "status": false,
@@ -130,9 +130,9 @@ docs {
     }
   }
   ```
-
+  
   #### Response Shape
-
+  
   | Field | Type | Description |
   |-------|------|-------------|
   | `status` | `boolean` | Always `false` for error responses. |
@@ -142,13 +142,13 @@ docs {
   | `error.details` | `array` | List of field validation failure objects. |
   | `error.details[].field` | `string` | The target field path failing validation. |
   | `error.details[].message` | `string` | Description of the validation failure constraint. |
-
+  
   ---
-
+  
   ### `500 Internal Server Error` — Server / Stripe Failure
-
+  
   Returned when an unexpected error occurs in database querying or Stripe API communication.
-
+  
   ```json
   {
     "status": false,
@@ -158,9 +158,9 @@ docs {
     }
   }
   ```
-
+  
   #### Response Shape
-
+  
   | Field | Type | Description |
   |-------|------|-------------|
   | `status` | `boolean` | Always `false` for error responses. |

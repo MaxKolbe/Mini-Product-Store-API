@@ -9,7 +9,7 @@ import { ValidationError } from "../lib/error.js";
 export const checkout = async (
   body: CheckoutType["body"],
   correlationId: string,
-  email: string,
+  user: { id: string; email: string;},
 ) => {
   const productIds = body.products.map((p) => p.productId);
 
@@ -37,13 +37,16 @@ export const checkout = async (
       product_data: {
         name: result.name,
         description: result.description,
+        metadata: {
+          productId: result.id,
+        }
       },
       unit_amount: result.price,
     },
     quantity: quantityMap.get(result.id)!,
   }));
 
-  const session = await createSession(lineItems, email);
+  const session = await createSession(lineItems, user.email, user.id);
 
   // emitter to log details for auditing
 

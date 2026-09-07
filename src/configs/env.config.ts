@@ -19,6 +19,7 @@ const EnvSchema = z.object({
   BREVO_API_KEY: z.string("BREVO_API_KEY is missing"),
   BREVO_EMAIL: z.string("BREVO_EMAIL is missing"),
   STRIPE_SECRET_KEY: z.string("STRIPE_SECRET_KEY is missing"),
+  STRIPE_WEBHOOK_SECRET: z.string("STRIPE_WEBHOOK_SECRET is missing"),
   API_BASE_URL: z.string().default("http://localhost:3000"),
 });
 
