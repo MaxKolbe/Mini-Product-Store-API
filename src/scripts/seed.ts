@@ -2,14 +2,18 @@ import db from "../db/db.js";
 import logger from "../configs/logger.config.js";
 import { users } from "../db/models/users.js";
 import { products } from "../db/models/products.js";
+import { orders, orderItem } from "../db/models/orders.js";
 import { hashPassword } from "../utils/password.util.js";
 
 // CLEAR TABLES
 export const clearTables = async () => {
   try {
     logger.info("Clearing tables...");
-    await db.delete(products);
+    await db.delete(orderItem);
+    await db.delete(orders);
     await db.delete(users);
+    await db.delete(products);
+
     logger.info("Tables cleared :)");
   } catch (error: any) {
     logger.error("Could not delete all tables", {
