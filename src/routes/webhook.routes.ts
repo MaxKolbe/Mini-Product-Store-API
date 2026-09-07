@@ -33,11 +33,11 @@ router.post("/stripe", async (req, res) => {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": 
-      logger.debug("i got here")
+      case "checkout.session.completed": {
         const session = event.data.object;
         await fulfillOrder(session);
         break;
+      }
       default:
         logger.info("Unhandled Stripe webhook event", {
           eventType: event.type,

@@ -14,6 +14,7 @@ type FulfillmentItem = {
   amount: number;
 };
 
+
 export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<void> => {
   if (session.payment_status !== "paid") {
     logger.warn("Checkout session completed without successful payment", {
@@ -49,7 +50,9 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
     return;
   }
 
-  const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+  const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+    expand: ["data.price.product"],
+  });
 
   if (lineItems.data.length === 0) {
     throw new Error(`No line items found for Stripe session ${session.id}`);
@@ -58,10 +61,10 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
   const items: FulfillmentItem[] = [];
 
   for (const lineItem of lineItems.data) {
-    const stripeProductId = lineItem.price?.product;
+    const stripeProduct = lineItem.price?.product;
 
-    if (typeof stripeProductId !== "string") {
-      throw new Error(`Missing Stripe product ID for line item in session ${session.id}`);
+    if (!stripeProduct || typeof stripeProduct === "string" || stripeProduct.deleted) {
+      throw new Error(`Missing Stripe product for line item in session ${session.id}`);
     }
 
     if (lineItem.quantity === null) {
@@ -72,12 +75,10 @@ export const fulfillOrder = async (session: Stripe.Checkout.Session): Promise<vo
       throw new Error(`Missing amount_total for line item in session ${session.id}`);
     }
 
-    const stripeProduct = await stripe.products.retrieve(stripeProductId);
-
     const productId = stripeProduct.metadata.productId;
 
     if (!productId) {
-      throw new Error(`Missing internal productId metadata for Stripe product ${stripeProductId}`);
+      throw new Error(`Missing internal productId metadata for Stripe product ${stripeProduct.id}`);
     }
 
     items.push({
